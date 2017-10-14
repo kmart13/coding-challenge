@@ -1,0 +1,64 @@
+{
+  "contract_name": "PrivateTrust",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "remove",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "trustor",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "trustee",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "fallback"
+    }
+  ],
+  "unlinked_binary": "0x6060604052341561000f57600080fd5b60008054600160a060020a033316600160a060020a031990911617905561016a8061003b6000396000f300606060405236156100545763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663a7f437798114610061578063ec5630ca14610074578063fdf97cb2146100b0575b341561005f57600080fd5b005b341561006c57600080fd5b61005f6100c3565b341561007f57600080fd5b610087610106565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b34156100bb57600080fd5b610087610122565b6000543373ffffffffffffffffffffffffffffffffffffffff9081169116146100eb57600080fd5b60005473ffffffffffffffffffffffffffffffffffffffff16ff5b60005473ffffffffffffffffffffffffffffffffffffffff1681565b60015473ffffffffffffffffffffffffffffffffffffffff16815600a165627a7a72305820c0cc175f93a73cae69ac49c81b6066f60d39e81fca5c98071b6c3fd5aa4ada1a0029",
+  "networks": {
+    "1508008578600": {
+      "events": {},
+      "links": {},
+      "address": "0x7bc8b7dbcb363157cd203d1b1a1d31424e5fcb81",
+      "updated_at": 1508012105584
+    }
+  },
+  "schema_version": "0.0.5",
+  "updated_at": 1508012105584
+}
