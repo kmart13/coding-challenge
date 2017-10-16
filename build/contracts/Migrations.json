@@ -69,10 +69,16 @@
     "1508008578600": {
       "events": {},
       "links": {},
-      "address": "0x0407f98aab7178995e9931f483f369b4acf5f08c",
-      "updated_at": 1508012105584
+      "address": "0xe061262caa8f12d6b5eeded81002b8b266b8d81e",
+      "updated_at": 1508015697687
+    },
+    "1508016155244": {
+      "events": {},
+      "links": {},
+      "address": "0x3b4235f3fd2f6c1d5886e71756ab4ab321cf20ea",
+      "updated_at": 1508016174855
     }
   },
   "schema_version": "0.0.5",
-  "updated_at": 1508012105584
+  "updated_at": 1508016174855
 }
