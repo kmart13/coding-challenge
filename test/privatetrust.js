@@ -1,14 +1,26 @@
 var PrivateTrust = artifacts.require("./PrivateTrust.sol");
 
-const web3 = global.web3;
+//const web3 = global.web3;
 
 contract('PrivateTrust', function(accounts) {
   var event;
+  var trust;
   var trustor = accounts[0];
   var trustee = accounts[1];
 
+  async function shouldThrow(func, message) {
+    var errorThrown;
+    try {
+      errorThrown = false;
+      await func();
+    } catch(error) {
+      errorThrown = true;
+    }
+
+    assert.equal(errorThrown, true, message);
+  }
+
   beforeEach(async function() {
-    accounts[0].balance = 1000000000000000000000000000;
     trust = await PrivateTrust.new({from: trustor});
     await trust.assignTrustee(trustee, {from: trustor});
   });
@@ -28,15 +40,9 @@ contract('PrivateTrust', function(accounts) {
     assert.equal(event.get()[0].event, "LogDeposit", "Log event should be 'LogDeposit'");
     assert.equal(event.get()[0].args.amount.valueOf(), amount, "LogDeposit should show the value deposited");
 
-    var errorThrown;
-    try {
-      errorThrown = false;
-      await trust.deposit({from: trustee, value: amount});
-    } catch (error) {
-      errorThrown = true;
-    }
-
-    assert.equal(errorThrown, true, "Non trustor should not be allowed to deposit");
+    await shouldThrow(async function() {
+      await trust.deposit({from: trustee, value: amount}), "Only trustor can deposit"
+    });
   });
 
   it("should allow the trustor to assign a new trustee", async function() {
@@ -45,69 +51,49 @@ contract('PrivateTrust', function(accounts) {
     await trust.assignTrustee(trustee, {from: trustor});
     assert.equal(await trust.trustee(), trustee, "The trustor should be able to assign a new trustee address");
 
-    var errorThrown;
-    try {
-      errorThrown = false;
-      await trust.assignTrustee(accounts[4], {from: trustee});
-    } catch (error) {
-      errorThrown = true;
-    }
-
-    assert.equal(errorThrown, true, "Non trustor should not be allowed to assign a new trustee");
+    await shouldThrow(async function() {
+      await trust.assignTrustee(accounts[4], {from: trustee}), "Only trustor can assign new trustee"
+    });
   });
 
   it("should allow the trustor to designate a new beneficiary", async function() {
     event = trust.LogDesignation(function(error, result) {});
 
-    await trust.designateBeneficiary("John Doe Smith", 30, {from: trustor});
+    await trust.designateBeneficiary("Test", 30, {from: trustor});
 
     assert.equal(event.get()[0].event, "LogDesignation", "Log event should be 'LogDesignation'");
-    assert.equal(event.get()[0].args.name.valueOf(), "John Doe Smith", "Trustor should have designated John Doe Smith as a trustee");
-    assert.equal(event.get()[0].args.age.valueOf(), 30, "Trustor should have set John Doe Smith's withdrawal age to 30");
+    assert.equal(event.get()[0].args.name.valueOf(), "Test", "Trustor should have designated Test as a trustee");
+    assert.equal(event.get()[0].args.age.valueOf(), 30, "Trustor should have set Test's withdrawal age to 30");
 
-    await trust.designateBeneficiary("John Doe Smith", 35, {from: trustor});
+    await trust.designateBeneficiary("Test", 35, {from: trustor});
 
     assert.equal(event.get()[0].event, "LogDesignation", "Log event should be 'LogDesignation'");
-    assert.equal(event.get()[0].args.age.valueOf(), 35, "Trustor should have updated John Doe Smith's withdrawal age to 35");
+    assert.equal(event.get()[0].args.age.valueOf(), 35, "Trustor should have updated Test's withdrawal age to 35");
 
-    var errorThrown;
-    try {
-      errorThrown = false;
-      await trust.designateBeneficiary("Test", 50, {from: trustee});
-    } catch (error) {
-      errorThrown = true;
-    }
-
-    assert.equal(errorThrown, true, "Non trustor should not be allowed to designate a beneficiary");
+    await shouldThrow(async function() {
+      await trust.designateBeneficiary("Test", 50, {from: trustee}), "Only trustor can designate a beneficiary"
+    });
   });
 
-  it("should allow the trustor to designate a new beneficiary", async function() {
+  it("should allow the trustee to remove a beneficiary", async function() {
     event = trust.LogRemoval(function(error, result) {});
 
-    await trust.designateBeneficiary("John Doe Smith", 30, {from: trustor});
-    await trust.removeBeneficiary("John Doe Smith", {from: trustee});
+    await trust.designateBeneficiary("Test", 30, {from: trustor});
+    await trust.removeBeneficiary("Test", {from: trustee});
 
     assert.equal(event.get()[0].event, "LogRemoval", "Log event should be 'LogRemoval'");
-    assert.equal(event.get()[0].args.name.valueOf(), "John Doe Smith", "John Doe Smith should be removed as a beneficiary");
+    assert.equal(event.get()[0].args.name.valueOf(), "Test", "Test should be removed as a beneficiary");
 
-    var errorThrown;
-    try {
-      errorThrown = false;
-      await trust.removeBeneficiary("John Doe Smith", {from: trustee});
-    } catch (error) {
-      errorThrown = true;
-    }
+    await shouldThrow(async function() {
+      await trust.removeBeneficiary("Test", {from: trustee}), "Should not be able to remove undesignated beneficiary"
+    });
 
-    assert.equal(errorThrown, true, "Should not be able to remove undesignated beneficiary");
+    await shouldThrow(async function() {
+      await trust.designateBeneficiary("Test", 30, {from: trustor});
+      await trust.removeBeneficiary("Test", {from: trustor}), "Only trustee can remove a beneficiary"
+    });
+  });
 
-    try {
-      errorThrown = false;
-      await trust.designateBeneficiary("John Doe Smith", 30, {from: trustor});
-      await trust.removeBeneficiary("John Doe Smith", {from: trustor});
-    } catch (error) {
-      errorThrown = true;
-    }
-
-    assert.equal(errorThrown, true, "Non trustor should not be allowed to remove a beneficiary");
+  it("should allow the trustee to remove a beneficiary", async function() {
   });
 });
