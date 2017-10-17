@@ -13,17 +13,24 @@ contract PrivateTrust {
   address public trustor;
   address public trustee;
 
+  uint public activeBeneficiaries;
+
   Beneficiary[] private beneficiaries;
 
   event LogDeposit(uint amount);
   event LogDesignation(string name, uint age);
   event LogRemoval(string name);
-  event LogWithdrawalAddress(address addr, string name);
+  event LogAddress(address addr, string name);
+  event LogWithdrawal(address addr, string name, uint amount);
 
   modifier onlyTrustor() { require(msg.sender == trustor); _; }
   modifier onlyTrustee() { require(msg.sender == trustee); _; }
+  modifier containsFunds() { require(this.balance >= activeBeneficiaries); _; }
 
-  function PrivateTrust() public { trustor = msg.sender; }
+  function PrivateTrust() public {
+    trustor = msg.sender;
+    activeBeneficiaries = 0;
+  }
 
   /// Trustor can assign a trustee at address `_addr`.
   function assignTrustee(address _addr) public onlyTrustor {
@@ -38,10 +45,13 @@ contract PrivateTrust {
     var (exists, index) = findBeneficiary(_name);
 
     if (exists) {
+      require(!beneficiaries[index].hasWithdrawn);
       beneficiaries[index].maturityAge = _age;
     } else {
       beneficiaries.push(Beneficiary(DEFAULT_ADDRESS, _name, _age, false));
     }
+
+    activeBeneficiaries++;
 
     LogDesignation(_name, _age);
   }
@@ -51,23 +61,47 @@ contract PrivateTrust {
     var (exists, index) = findBeneficiary(_name);
 
     require(exists);
+    require(!beneficiaries[index].hasWithdrawn);
 
     beneficiaries[index] = beneficiaries[beneficiaries.length-1];
     delete beneficiaries[beneficiaries.length-1];
     beneficiaries.length--;
+    activeBeneficiaries--;
 
     LogRemoval(_name);
   }
 
-  /// Assign an address `_addr` for beneficiary `_name` to withdraw from prior to withdrawal
-  function assignWithdrawalAddress(address _addr, string _name) public onlyTrustee {
+  /// Assign a withdrawal address `_addr` for beneficiary `_name` and verified age by trustee `_age`
+  function assignWithdrawalAddress(address _addr, string _name, uint _age) public onlyTrustee {
     var (exists, index) = findBeneficiary(_name);
 
-    require(exists && !beneficiaries[index].hasWithdrawn);
+    require(exists);
+    require(!beneficiaries[index].hasWithdrawn);
+    LogAddress(_addr, _name);
+    require(_age >= beneficiaries[index].maturityAge);
+    LogAddress(_addr, _name);
 
     beneficiaries[index].withdrawalAddress = _addr;
 
-    LogWithdrawalAddress(_addr, _name);
+    LogAddress(_addr, _name);
+  }
+
+  /// Withdraw beneficiary's `_name` portion of the trust to address `_addr`
+  function withdraw(address _addr, string _name) public containsFunds {
+    var (exists, index) = findBeneficiary(_name);
+
+    require(exists);
+    require(!beneficiaries[index].hasWithdrawn);
+    require(beneficiaries[index].withdrawalAddress == _addr && _addr != DEFAULT_ADDRESS);
+
+    uint amount = this.balance / activeBeneficiaries;
+
+    if (_addr.send(amount)) {
+      beneficiaries[index].hasWithdrawn == true;
+      activeBeneficiaries--;
+
+      LogWithdrawal(_addr, _name, amount);
+    }
   }
 
   /// Trustor can deposit funds to the trust and this event will be logged
