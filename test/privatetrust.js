@@ -20,17 +20,15 @@ contract('PrivateTrust', function(accounts) {
       errorThrown = true;
     }
 
-    console.log("MadeIt: " + madeIt);
-    console.log("ErrorThrown: " + errorThrown);
-
+    assert.equal(madeIt, true, "Did not make it to the expected throw");
     assert.equal(errorThrown, true, message);
 
-    //trust = await PrivateTrust.new({from: trustor});
-    //await trust.assignTrustee(trustee, {from: trustor});
+    trust = await PrivateTrust.new(trustor, {from: trustor});
+    await trust.assignTrustee(trustee, {from: trustor});
   }
 
   beforeEach(async function() {
-    trust = await PrivateTrust.new({from: trustor});
+    trust = await PrivateTrust.new(trustor, {from: trustor});
     await trust.assignTrustee(trustee, {from: trustor});
   });
 
@@ -109,6 +107,7 @@ contract('PrivateTrust', function(accounts) {
     }, "Should not be able to remove undesignated beneficiary");
 
     await shouldThrow(async function() {
+      await trust.deposit({from: trustor, value: 10});
       await trust.designateBeneficiary("Test", 50, {from: trustor});
       await trust.assignWithdrawalAddress(accounts[7], "Test", 50, {from: trustee})
       await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
@@ -137,6 +136,7 @@ contract('PrivateTrust', function(accounts) {
     }, "Can't assign address to undesignated beneficiary");
 
     await shouldThrow(async function() {
+      await trust.deposit({from: trustor, value: 10});
       await trust.designateBeneficiary("Test", 50, {from: trustor});
       await trust.assignWithdrawalAddress(accounts[7], "Test", 50, {from: trustee})
       await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
@@ -158,5 +158,93 @@ contract('PrivateTrust', function(accounts) {
     assert.equal(event.get()[0].event, "LogAddress", "Log event should be 'LogAddress'");
     assert.equal(event.get()[0].args.addr.valueOf(), accounts[7], "Test should be assigned a withdrawal address");
     assert.equal(event.get()[0].args.name.valueOf(), "Test", "The withdrawal address should be assigned to Test");
+  });
+
+  it("should allow the beneficiary to withdraw their portion from the trust", async function() {
+    await shouldThrow(async function() {
+      madeIt = true;
+      await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
+    }, "Trust must contain funds to withdraw");
+
+    await shouldThrow(async function() {
+      await trust.deposit({from: trustor, value: 10});
+      madeIt = true;
+      await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
+    }, "Beneficiary must have been designated");
+
+    await shouldThrow(async function() {
+      await trust.deposit({from: trustor, value: 10});
+      await trust.designateBeneficiary("Test", 30, {from: trustor});
+      madeIt = true;
+      await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
+    }, "Beneficiary must have been assigned a withdrawal address");
+
+    await shouldThrow(async function() {
+      await trust.deposit({from: trustor, value: 10});
+      await trust.designateBeneficiary("Test", 30, {from: trustor});
+      await trust.assignWithdrawalAddress(accounts[7], "Test", 30, {from: trustee})
+      madeIt = true;
+      await trust.withdraw(accounts[6], "Test", {from: accounts[7]});
+    }, "Beneficiary must withdraw to their assigned withdrawal address");
+
+    await shouldThrow(async function() {
+      await trust.deposit({from: trustor, value: 10});
+      await trust.designateBeneficiary("Test", 30, {from: trustor});
+      await trust.assignWithdrawalAddress(accounts[7], "Test", 30, {from: trustee})
+      await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
+      madeIt = true;
+      await trust.withdraw(accounts[7], "Test", {from: accounts[7]});
+    }, "Beneficiary can't have withdrawn their portion of the trust already");
+
+    event = trust.LogWithdrawal(function(error, result) {});
+
+    await trust.deposit({from: trustor, value: 100});
+    await trust.designateBeneficiary("Test1", 30, {from: trustor});
+    await trust.assignWithdrawalAddress(accounts[5], "Test1", 30, {from: trustee})
+    await trust.designateBeneficiary("Test2", 25, {from: trustor});
+    await trust.assignWithdrawalAddress(accounts[6], "Test2", 25, {from: trustee})
+    await trust.designateBeneficiary("Test3", 35, {from: trustor});
+    await trust.assignWithdrawalAddress(accounts[7], "Test3", 35, {from: trustee})
+
+    var initialBalance = web3.eth.getBalance(accounts[5]).toNumber();
+    var totalBalance = initialBalance + 33;
+
+    await trust.withdraw(accounts[5], "Test1");
+
+    var currentBalance = web3.eth.getBalance(accounts[5]).toNumber();
+
+    assert.equal(event.get()[0].event, "LogWithdrawal", "Log event should be 'LogWithdrawal'");
+    assert.equal(event.get()[0].args.addr.valueOf(), accounts[5], "Should withdraw to address: " + accounts[5]);
+    assert.equal(event.get()[0].args.name.valueOf(), "Test1", "Should withdraw to name Test1");
+    assert.equal(event.get()[0].args.amount.valueOf(), 33, "Should withdraw their equal portion");
+    assert.equal(currentBalance, totalBalance, "33 wei should have been deposited");
+
+    var initialBalance = web3.eth.getBalance(accounts[6]).toNumber();
+    var totalBalance = initialBalance + 33;
+
+    await trust.withdraw(accounts[6], "Test2");
+
+    var currentBalance = web3.eth.getBalance(accounts[6]).toNumber();
+
+    assert.equal(event.get()[0].event, "LogWithdrawal", "Log event should be 'LogWithdrawal'");
+    assert.equal(event.get()[0].args.addr.valueOf(), accounts[6], "Should withdraw to address: " + accounts[6]);
+    assert.equal(event.get()[0].args.name.valueOf(), "Test2", "Should withdraw to name Test2");
+    assert.equal(event.get()[0].args.amount.valueOf(), 33, "Should withdraw their equal portion");
+    assert.equal(currentBalance, totalBalance, "33 wei should have been deposited");
+
+    var initialBalance = web3.eth.getBalance(accounts[7]).toNumber();
+    var totalBalance = initialBalance + 34;
+
+    await trust.withdraw(accounts[7], "Test3");
+
+    var currentBalance = web3.eth.getBalance(accounts[7]).toNumber();
+
+    assert.equal(event.get()[0].event, "LogWithdrawal", "Log event should be 'LogWithdrawal'");
+    assert.equal(event.get()[0].args.addr.valueOf(), accounts[7], "Should withdraw to address: " + accounts[7]);
+    assert.equal(event.get()[0].args.name.valueOf(), "Test3", "Should withdraw to name Test3");
+    assert.equal(event.get()[0].args.amount.valueOf(), 34, "Should withdraw their equal portion");
+    assert.equal(currentBalance, totalBalance, "34 wei should have been deposited");
+
+    assert.equal(await trust.getBalance(), 0, "All funds should be withdrawn");
   });
 });

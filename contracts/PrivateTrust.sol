@@ -13,7 +13,7 @@ contract PrivateTrust {
   address public trustor;
   address public trustee;
 
-  uint public activeBeneficiaries;
+  uint private activeBeneficiaries;
 
   Beneficiary[] private beneficiaries;
 
@@ -77,9 +77,7 @@ contract PrivateTrust {
 
     require(exists);
     require(!beneficiaries[index].hasWithdrawn);
-    LogAddress(_addr, _name);
     require(_age >= beneficiaries[index].maturityAge);
-    LogAddress(_addr, _name);
 
     beneficiaries[index].withdrawalAddress = _addr;
 
@@ -97,7 +95,7 @@ contract PrivateTrust {
     uint amount = this.balance / activeBeneficiaries;
 
     if (_addr.send(amount)) {
-      beneficiaries[index].hasWithdrawn == true;
+      beneficiaries[index].hasWithdrawn = true;
       activeBeneficiaries--;
 
       LogWithdrawal(_addr, _name, amount);
